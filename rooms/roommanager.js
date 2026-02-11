@@ -14,7 +14,8 @@ const rooms = {};
 function createRoom(socketId) {
   const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
   rooms[roomCode] = {
-    players: [{ id: socketId, name: null }]
+    players: [{ id: socketId, name: null }],
+    started: false
   };
   return roomCode;
 }

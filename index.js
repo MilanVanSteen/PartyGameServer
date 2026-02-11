@@ -23,10 +23,20 @@ io.on("connection", (socket) => {
 
     // JOIN_ROOM
     socket.on("JOIN_ROOM", ({ roomCode }) => {
-        const success = joinRoom(roomCode, socket.id);
-
-        if (!success) {
+        const room = rooms[roomCode];
+        if (!room) {
             socket.emit("ERROR", { message: "Room does not exist" });
+            return;
+        }
+
+        if (room.started) {
+            socket.emit("ERROR", { message: "Game has already started" });
+            return;
+        }
+        
+        const success = joinRoom(roomCode, socket.id);
+        if (!success) {
+            socket.emit("ERROR", { message: "Failed to join room" });
             return;
         }
         
@@ -55,6 +65,9 @@ io.on("connection", (socket) => {
             socket.emit("ERROR", { message: "Only the host can start the game" });
             return;
         }
+
+        rooms[roomCode].started = true;
+        
         io.to(roomCode).emit("GAME_STARTED", { players: getRoomPlayers(roomCode) });
         console.log(`Game started in room ${roomCode} by host ${socket.id}`);
     });
