@@ -26,12 +26,31 @@ io.on("connection", (socket) => {
         const success = joinRoom(roomCode, socket.id);
         if (success) {
             socket.join(roomCode);
+            socket.roomCode = roomCode;
             socket.emit("ROOM_JOINED", { roomCode, players: getRoomPlayers(roomCode), host: hosts[roomCode] });
             io.to(roomCode).emit("PLAYER_JOINED", { playerId: socket.id, players: getRoomPlayers(roomCode), roomCode });
            console.log(`${socket.id} joined room ${roomCode}`);
         } else {
             socket.emit("ERROR", { message: "Room does not exist" });
         }
+    });
+
+    // SET_NAME
+    socket.on("SET_NAME", ({ playerName }) => {
+        const room = rooms[socket.roomCode];
+        if (!roomCode) return socket.emit("ERROR", { message: "Not in a room" });
+        
+        const players = getRoomPlayers(roomCode);
+        let player = players.find(p => p.id === socket.id);
+        if (player) {
+            player.name = playerName; // set the name
+        } else {
+            // if not found, add
+            players.push({ id: socket.id, name: playerName });
+        }
+        
+        io.to(roomCode).emit("PLAYER_JOINED", { players });
+        console.log(`Player ${socket.id} set name to ${playerName} in room ${roomCode}`);
     });
 
     // HOST starts game
