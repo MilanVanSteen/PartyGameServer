@@ -1,0 +1,67 @@
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const { createRoom, joinRoom, leaveRoom, getRoomPlayers } = require("./rooms/roommanager");
+
+const hosts = {};
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {cors: {origin: "*"}});
+
+io.on("connection", (socket) => {
+    console.log("Client joined with id:", socket.id);
+
+    // CREATE_ROOM
+    socket.on("CREATE_ROOM", () => {
+        const roomCode = createRoom(socket.id);
+        socket.join(roomCode);
+        hosts[roomCode] = socket.id;
+        socket.emit("ROOM_CREATED", { roomCode });
+        console.log(`Room ${roomCode} created by ${socket.id}`);
+    });
+
+    // JOIN_ROOM
+    socket.on("JOIN_ROOM", ({ roomCode }) => {
+        const success = joinRoom(roomCode, socket.id);
+        if (success) {
+            socket.join(roomCode);
+            socket.emit("ROOM_JOINED", { roomCode, players: getRoomPlayers(roomCode), host: hosts[roomCode] });
+            io.to(roomCode).emit("PLAYER_JOINED", { playerId: socket.id, players: getRoomPlayers(roomCode), roomCode });
+           console.log(`${socket.id} joined room ${roomCode}`);
+        } else {
+            socket.emit("ERROR", { message: "Room does not exist" });
+        }
+    });
+
+    // HOST starts game
+    socket.on("START_GAME", ({ roomCode }) => {
+        if (hosts[roomCode] !== socket.id) {
+            socket.emit("ERROR", { message: "Only the host can start the game" });
+            return;
+        }
+        io.to(roomCode).emit("GAME_STARTED", { players: getRoomPlayers(roomCode) });
+        console.log(`Game started in room ${roomCode} by host ${socket.id}`);
+    });
+
+    // Disconnect (Clear rooms)
+    socket.on("disconnecting", () => {
+    const roomsJoined = Array.from(socket.rooms).filter(r => r !== socket.id);
+    roomsJoined.forEach(roomCode => {
+        leaveRoom(roomCode, socket.id);
+        io.to(roomCode).emit("PLAYER_LEFT", { playerId: socket.id, players: getRoomPlayers(roomCode) });
+        console.log(`${socket.id} left room ${roomCode}`);
+
+        // If host leaves, assign new host
+        if (hosts[roomCode] === socket.id && getRoomPlayers(roomCode).length > 0) {
+            hosts[roomCode] = getRoomPlayers(roomCode)[0];
+            io.to(roomCode).emit("NEW_HOST", { host: hosts[roomCode] });
+            console.log(`New host in room ${roomCode}: ${hosts[roomCode]}`);
+        }
+    });
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Party Game Server running on port ${PORT}`));
+

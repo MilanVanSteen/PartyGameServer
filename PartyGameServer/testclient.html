@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Automatic Test Client</title>
+</head>
+<body>
+  <h1>Automatic Test Client</h1>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    // === Config ===
+    const SERVER_URL = "http://localhost:3000";
+    const NUM_CLIENTS = 3; // aantal gesimuleerde clients
+    const clients = [];
+
+    // === Helper function ===
+    function log(clientName, message, data) {
+      console.log(`[${clientName}] ${message}`, data || '');
+    }
+
+    // === Maak clients aan ===
+    for (let i = 0; i < NUM_CLIENTS; i++) {
+      const clientName = `Client${i+1}`;
+      const socket = io(SERVER_URL);
+
+      socket.on("connect", () => log(clientName, "✅ Connected", socket.id));
+      socket.on("ROOM_CREATED", (data) => log(clientName, "🎉 Room created", data));
+      socket.on("ROOM_JOINED", (data) => log(clientName, "✅ Joined room", data));
+      socket.on("PLAYER_JOINED", (data) => {
+        log(clientName, "👤 Player joined:", data);
+
+        // Als dit de host is, check of iedereen aanwezig is
+        if (clientName === "Client1" && data.players.length === NUM_CLIENTS) {
+          console.log("🎯 All players joined! Host starting game...");
+          socket.emit("START_GAME", { roomCode: data.roomCode });
+        }
+      });
+      socket.on("PLAYER_LEFT", (data) => log(clientName, "👋 Player left", data));
+      socket.on("GAME_STARTED", data => console.log("🚀 Game started!", data));
+      socket.on("NEW_HOST", data => console.log("👑 New host:", data));
+      socket.on("ERROR", (data) => log(clientName, "⚠️ Error", data));
+
+      clients.push({ name: clientName, socket });
+    }
+
+    // === Test flow: maak 1 room en laat de rest joinen ===
+    function runTest() {
+      // 1️⃣ Eerste client maakt room
+      const first = clients[0];
+      first.socket.emit("CREATE_ROOM");
+
+      first.socket.on("ROOM_CREATED", ({ roomCode }) => {
+        log(first.name, "Room code:", roomCode);
+
+        // 2️⃣ Laat de andere clients joinen
+        for (let j = 1; j < clients.length; j++) {
+          const c = clients[j];
+          setTimeout(() => {
+            log(c.name, `Trying to join room ${roomCode}`);
+            c.socket.emit("JOIN_ROOM", { roomCode });
+          }, j * 500); // kleine delay voor overzicht
+        }
+      });
+    }
+
+    // Start automatisch na 1s
+    setTimeout(runTest, 1000);
+  </script>
+</body>
+</html>

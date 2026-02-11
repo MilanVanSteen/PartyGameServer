@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Party Game Mobile Client</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <h1>Party Game</h1>
+
+  <div>
+    <input id="roomInput" placeholder="Room code (ABCD)">
+    <button onclick="joinRoom()">Join Room</button>
+  </div>
+  <div>
+    <button onclick="createRoom()">Create Room</button>
+  </div>
+  <div>
+    <button onclick="startGame()">Start Game (Host only)</button>
+  </div>
+
+  <pre id="log"></pre>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const SERVER_URL = "http://172.20.10.2:3000";
+    const socket = io(SERVER_URL);
+
+    const logEl = document.getElementById("log");
+    function log(message, data) {
+      logEl.textContent += message + (data ? ": " + JSON.stringify(data) : "") + "\n";
+    }
+
+    socket.on("connect", () => log("✅ Connected", socket.id));
+    socket.on("ROOM_CREATED", data => log("🎉 Room created", data));
+    socket.on("ROOM_JOINED", data => log("✅ Joined room", data));
+    socket.on("PLAYER_JOINED", data => log("👤 Player joined", data));
+    socket.on("PLAYER_LEFT", data => log("👋 Player left", data));
+    socket.on("GAME_STARTED", data => log("🚀 Game started", data));
+    socket.on("NEW_HOST", data => log("👑 New host", data));
+    socket.on("ERROR", data => log("⚠️ Error", data));
+
+    function createRoom() { socket.emit("CREATE_ROOM"); }
+    function joinRoom() {
+      const code = document.getElementById("roomInput").value.trim().toUpperCase();
+      if (!code) return alert("Enter room code!");
+      socket.emit("JOIN_ROOM", { roomCode: code });
+    }
+    function startGame() {
+      const code = document.getElementById("roomInput").value.trim().toUpperCase();
+      if (!code) return alert("Enter room code!");
+      socket.emit("START_GAME", { roomCode: code });
+    }
+  </script>
+</body>
+</html>
