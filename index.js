@@ -34,8 +34,6 @@ io.on("connection", (socket) => {
         socket.roomCode = roomCode;
 
         socket.emit("ROOM_JOINED", { roomCode, players: getRoomPlayers(roomCode)});
-        
-        io.to(roomCode).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
     });
 
     // SET_NAME
