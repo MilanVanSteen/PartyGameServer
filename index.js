@@ -1,7 +1,7 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const { createRoom, joinRoom, leaveRoom, setPlayerName, getRoomPlayers } = require("./rooms/roommanager");
+const { createRoom, joinRoom, leaveRoom, setPlayerName, isValidName, getRoomPlayers } = require("./rooms/roommanager");
 
 const hosts = {};
 
@@ -41,9 +41,12 @@ io.on("connection", (socket) => {
     // SET_NAME
     socket.on("SET_NAME", ({ playerName }) => {
         const roomCode = socket.roomCode;
-        if (!roomCode) return socket.emit("ERROR", { message: "Not in a room" });
+        if (!roomCode) {socket.emit("NAME_ERROR", { message: "Not in a room" }); return;}
 
-        setPlayerName(roomCode, socket.id, playerName);
+        const error = isValidName(roomCode, playerName);
+        if (error) {socket.emit("NAME_ERROR", { message: error }); return;}
+
+        setPlayerName(roomCode, socket.id, playerName.trim());
         
         io.to(roomCode).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
     });

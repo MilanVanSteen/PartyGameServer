@@ -1,3 +1,14 @@
+const fs = require("fs");
+const path = require("path");
+
+const badWordsPath = path.join(__dirname, "bannedwords.txt");
+
+const BAD_WORDS = fs
+  .readFileSync(badWordsPath, "utf8")
+  .split(/\r?\n/)
+  .map(w => w.trim().toLowerCase())
+  .filter(Boolean);
+
 const rooms = {};
 
 function createRoom(socketId) {
@@ -35,8 +46,41 @@ function setPlayerName(roomCode, socketId, name) {
   if (player) player.name = name;
 }
 
+function isValidName(roomCode, name) {
+  if (!name) return "Name is required";
+
+  const trimmed = name.trim();
+
+  if (trimmed.length < 2 || trimmed.length > 12) {
+    return "Name must be 2–12 characters long";
+  }
+
+  if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
+    return "Name can only contain letters and numbers";
+  }
+
+  const lower = trimmed.toLowerCase();
+
+  if (BAD_WORDS.some(word => new RegExp(`\\b${word}\\b`, "i").test(trimmed))) {
+    return "Inappropriate name";
+  }
+
+  const room = rooms[roomCode];
+  if (!room) return "Room not found";
+
+  const duplicate = room.players.some(
+    p => p.name && p.name.toLowerCase() === lower
+  );
+
+  if (duplicate) {
+    return "Name already taken";
+  }
+
+  return null; // Name is valid
+}
+
 function getRoomPlayers(roomCode) {
   return rooms[roomCode] ? rooms[roomCode].players : [];
 }
 
-module.exports = { createRoom, joinRoom, leaveRoom, setPlayerName, getRoomPlayers };
+module.exports = { createRoom, joinRoom, leaveRoom, setPlayerName, isValidName, getRoomPlayers };
