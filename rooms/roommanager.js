@@ -84,4 +84,4 @@ function getRoomPlayers(roomCode) {
   return rooms[roomCode] ? rooms[roomCode].players : [];
 }
 
-module.exports = { createRoom, joinRoom, leaveRoom, setPlayerName, isValidName, getRoomPlayers };
+module.exports = { createRoom, joinRoom, leaveRoom, setPlayerName, isValidName, getRoomPlayers, rooms };
