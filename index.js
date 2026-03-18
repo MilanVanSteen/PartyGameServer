@@ -64,9 +64,7 @@ io.on("connection", (socket) => {
         // Notify Unity of new player
         const hostId = hosts[roomCode];
         if (hostId) {
-            const players = getRoomPlayers(roomCode);
-            const newPlayer = players[players.length - 1]; // last player joined
-            io.to(hostId).emit("PLAYER_JOINED", newPlayer);
+            io.to(hostId).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
         }
         
         io.to(roomCode).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
