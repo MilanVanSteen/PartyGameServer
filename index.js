@@ -12,6 +12,11 @@ const io = new Server(server, {cors: {origin: "*"}});
 io.on("connection", (socket) => {
     console.log("Client joined with id:", socket.id);
 
+    // UNITY token check
+    if (socket.handshake.query.token === "UNITY") {
+        console.log("🎮 Unity client connected:", socket.id);
+    }
+
     // CREATE_ROOM
     socket.on("CREATE_ROOM", () => {
         const roomCode = createRoom(socket.id);
@@ -42,6 +47,13 @@ io.on("connection", (socket) => {
         
         socket.join(roomCode);
         socket.roomCode = roomCode;
+
+        // Notify Unity of new player
+        const hostId = hosts[roomCode];
+        if (hostId) {
+            const players = getRoomPlayers(roomCode);
+            io.to(hostId).emit("PLAYER_JOINED", players[players.length - 1].name);
+        }
 
         socket.emit("ROOM_JOINED", { roomCode, players: getRoomPlayers(roomCode)});
     });
@@ -74,32 +86,20 @@ io.on("connection", (socket) => {
 
     // Disconnect (Clear rooms)
     socket.on("disconnecting", () => {
-    const roomsJoined = Array.from(socket.rooms).filter(r => r !== socket.id);
-    roomsJoined.forEach(roomCode => {
-        leaveRoom(roomCode, socket.id);
-        io.to(roomCode).emit("PLAYER_LEFT", { playerId: socket.id, players: getRoomPlayers(roomCode) });
-        console.log(`${socket.id} left room ${roomCode}`);
+        const roomsJoined = Array.from(socket.rooms).filter(r => r !== socket.id);
+        roomsJoined.forEach(roomCode => {
+            leaveRoom(roomCode, socket.id);
+            io.to(roomCode).emit("PLAYER_LEFT", { playerId: socket.id, players: getRoomPlayers(roomCode) });
+            console.log(`${socket.id} left room ${roomCode}`);
 
-        // If host leaves, assign new host
-        if (hosts[roomCode] === socket.id && getRoomPlayers(roomCode).length > 0) {
-            hosts[roomCode] = getRoomPlayers(roomCode)[0];
-            io.to(roomCode).emit("NEW_HOST", { host: hosts[roomCode] });
-            console.log(`New host in room ${roomCode}: ${hosts[roomCode]}`);
-        }
+            // If host leaves, assign new host
+            if (hosts[roomCode] === socket.id && getRoomPlayers(roomCode).length > 0) {
+                hosts[roomCode] = getRoomPlayers(roomCode)[0];
+                io.to(roomCode).emit("NEW_HOST", { host: hosts[roomCode] });
+                console.log(`New host in room ${roomCode}: ${hosts[roomCode]}`);
+            }
+        });
     });
-
-
-    // UNITY JOINS ROOM
-    socket.on("UNITY_JOIN", ({ roomCode }) => {
-        socket.join(roomCode);
-        console.log("🎮 Unity joined room:", roomCode);
-    });
-
-    // TEST EVENT → send to Unity
-    socket.on("PING_UNITY", ({ roomCode }) => {
-        io.to(roomCode).emit("PING_UNITY");
-    });
-  });
 });
 
 const PORT = process.env.PORT || 3000;
