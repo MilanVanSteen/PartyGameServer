@@ -62,10 +62,10 @@ io.on("connection", (socket) => {
         setPlayerName(roomCode, socket.id, playerName.trim());
 
         // Notify Unity of new player
-        const hostId = hosts[roomCode];
-        if (hostId) {
-            io.to(hostId).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
-        }
+        // const hostId = hosts[roomCode];
+        // if (hostId) {
+        //     io.to(hostId).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
+        // }
         
         io.to(roomCode).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
     });
