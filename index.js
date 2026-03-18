@@ -87,6 +87,18 @@ io.on("connection", (socket) => {
             console.log(`New host in room ${roomCode}: ${hosts[roomCode]}`);
         }
     });
+
+
+    // UNITY JOINS ROOM
+    socket.on("UNITY_JOIN", ({ roomCode }) => {
+        socket.join(roomCode);
+        console.log("🎮 Unity joined room:", roomCode);
+    });
+
+    // TEST EVENT → send to Unity
+    socket.on("PING_UNITY", ({ roomCode }) => {
+        io.to(roomCode).emit("PING_UNITY");
+    });
   });
 });
 
