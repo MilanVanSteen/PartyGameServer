@@ -48,13 +48,6 @@ io.on("connection", (socket) => {
         socket.join(roomCode);
         socket.roomCode = roomCode;
 
-        // Notify Unity of new player
-        const hostId = hosts[roomCode];
-        if (hostId) {
-            const players = getRoomPlayers(roomCode);
-            io.to(hostId).emit("PLAYER_JOINED", players[players.length - 1].name);
-        }
-
         socket.emit("ROOM_JOINED", { roomCode, players: getRoomPlayers(roomCode)});
     });
 
@@ -67,6 +60,14 @@ io.on("connection", (socket) => {
         if (error) {socket.emit("NAME_ERROR", { message: error }); return;}
 
         setPlayerName(roomCode, socket.id, playerName.trim());
+
+        // Notify Unity of new player
+        const hostId = hosts[roomCode];
+        if (hostId) {
+            const players = getRoomPlayers(roomCode);
+            const newPlayer = players[players.length - 1]; // last player joined
+            io.to(hostId).emit("PLAYER_JOINED", newPlayer);
+        }
         
         io.to(roomCode).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
     });
