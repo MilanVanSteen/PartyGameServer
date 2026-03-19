@@ -60,18 +60,20 @@ io.on("connection", (socket) => {
         if (error) {socket.emit("NAME_ERROR", { message: error }); return;}
 
         setPlayerName(roomCode, socket.id, playerName.trim());
-
-        // Notify Unity of new player
-        // const hostId = hosts[roomCode];
-        // if (hostId) {
-        //     io.to(hostId).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
-        // }
         
         io.to(roomCode).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
     });
 
     // HOST starts game
-    socket.on("START_GAME", ({ roomCode }) => {
+    socket.on("START_GAME", () => {
+        const roomCode = socket.roomCode;
+
+        if (!roomCode) 
+        {
+            socket.emit("ERROR", { message: "Not in a room" });
+            return;
+        }
+        
         if (hosts[roomCode] !== socket.id) {
             socket.emit("ERROR", { message: "Only the host can start the game" });
             return;
@@ -80,6 +82,7 @@ io.on("connection", (socket) => {
         rooms[roomCode].started = true;
         
         io.to(roomCode).emit("GAME_STARTED", { players: getRoomPlayers(roomCode) });
+
         console.log(`Game started in room ${roomCode} by host ${socket.id}`);
     });
 
