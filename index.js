@@ -113,14 +113,15 @@ io.on("connection", (socket) => {
             const roll = Math.floor(Math.random() * 6) + 1;
             console.log(`Rolling dice for player ${player.id}: ${roll}`);
 
-            // If this is the host, immediately mark it done
+            // Send each player only their roll
+            io.to(player.id).emit("DICE_ROLL_START", { roll });
+
+            // count host automatically
             if (player.id === socket.id) {
                 if (!diceDone[roomCode]) diceDone[roomCode] = [];
                 diceDone[roomCode].push({ playerId: player.id, roll });
+                console.log(`Host auto-complete roll: ${roll}`);
             }
-
-            // Send each player only their roll
-            io.to(player.id).emit("DICE_ROLL_START", { roll });
         });
     });
 
