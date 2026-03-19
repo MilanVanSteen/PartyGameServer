@@ -148,12 +148,12 @@ io.on("connection", (socket) => {
         roomsJoined.forEach(roomCode => {
             leaveRoom(roomCode, socket.id);
             io.to(roomCode).emit("PLAYER_LEFT", { playerId: socket.id, players: getRoomPlayers(roomCode) });
-            console.log(`${socket.id} left room ${roomCode}`);
 
             // If host leaves, assign new host
-            if (hosts[roomCode] === socket.id && getRoomPlayers(roomCode).length > 0) {
-                hosts[roomCode] = getRoomPlayers(roomCode)[0];
-                io.to(roomCode).emit("NEW_HOST", { host: hosts[roomCode] });
+            if (hosts[roomCode] === socket.id) {
+                const newHost = getRoomPlayers(roomCode)[0]?.id || null;
+                hosts[roomCode] = newHost;
+                if (newHost) io.to(roomCode).emit("NEW_HOST", { host: newHost });
                 console.log(`New host in room ${roomCode}: ${hosts[roomCode]}`);
             }
         });

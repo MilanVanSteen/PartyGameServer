@@ -14,7 +14,7 @@ const rooms = {};
 function createRoom(socketId) {
   const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
   rooms[roomCode] = {
-    players: [{ id: socketId, name: null }],
+    players: [],
     started: false
   };
   return roomCode;
@@ -81,7 +81,9 @@ function isValidName(roomCode, name) {
 }
 
 function getRoomPlayers(roomCode) {
-  return rooms[roomCode].filter(p => p.id !== hosts[roomCode]);
+  const room = rooms[roomCode];
+  if (!room) return [];
+  return room.players;
 }
 
 module.exports = { createRoom, joinRoom, leaveRoom, setPlayerName, isValidName, getRoomPlayers, rooms };
