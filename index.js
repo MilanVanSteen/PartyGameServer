@@ -93,6 +93,48 @@ io.on("connection", (socket) => {
         console.log(`Game started in room ${roomCode} by host ${socket.id}`);
     });
 
+    // HOST triggers dice roll for a player
+    socket.on("ROLL_DICE", () => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        if (hosts[roomCode] !== socket.id) {
+            socket.emit("ERROR", { message: "Only host can roll dice" });
+            return;
+        }
+
+        const players = getRoomPlayers(roomCode);
+
+        // Generate random rolls for each player
+        players.forEach(player => {
+            const roll = Math.floor(Math.random() * 6) + 1;
+
+            // Send each player only their roll
+            io.to(player.id).emit("DICE_ROLL_START", { roll });
+        });
+    });
+
+    const diceDone = {};
+    socket.on("DICE_ROLL_FINISHED", ({ playerId, roll }) => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        if (!diceDone[roomCode]) diceDone[roomCode] = [];
+        diceDone[roomCode].push({ playerId, roll });
+
+        const players = getRoomPlayers(roomCode);
+        if (diceDone[roomCode].length === players.length) {
+            // All dice finished, send moves to host
+            const hostId = hosts[roomCode];
+            if (hostId) {
+                io.to(hostId).emit("PLAYER_MOVE", { moves: diceDone[roomCode] });
+            }
+
+            // Clear for next roll
+            diceDone[roomCode] = [];
+        }
+    });
+
     // Disconnect (Clear rooms)
     socket.on("disconnecting", () => {
         const roomsJoined = Array.from(socket.rooms).filter(r => r !== socket.id);
