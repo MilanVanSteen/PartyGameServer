@@ -21,7 +21,11 @@ io.on("connection", (socket) => {
     socket.on("CREATE_ROOM", () => {
         const roomCode = createRoom(socket.id);
         socket.join(roomCode);
+
         hosts[roomCode] = socket.id;
+
+        socket.roomCode = roomCode;
+        
         socket.emit("ROOM_CREATED", { roomCode });
         console.log(`Room ${roomCode} created by ${socket.id}`);
     });
