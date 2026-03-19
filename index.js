@@ -66,7 +66,10 @@ io.on("connection", (socket) => {
 
     // HOST starts game
     socket.on("START_GAME", () => {
+        console.log("START_GAME received from:", socket.id);
+
         const roomCode = socket.roomCode;
+        console.log("Room code on server:", roomCode);
 
         if (!roomCode) 
         {
