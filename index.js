@@ -96,8 +96,6 @@ io.on("connection", (socket) => {
     // HOST triggers dice roll for a player
     socket.on("ROLL_DICE", () => {
         const roomCode = socket.roomCode;
-        console.log("ROLL_DICE triggered by", socket.id, "in room", roomCode);
-
         if (!roomCode) return;
 
         if (hosts[roomCode] !== socket.id) {
@@ -115,13 +113,6 @@ io.on("connection", (socket) => {
 
             // Send each player only their roll
             io.to(player.id).emit("DICE_ROLL_START", { roll });
-
-            // count host automatically
-            if (player.id === socket.id) {
-                if (!diceDone[roomCode]) diceDone[roomCode] = [];
-                diceDone[roomCode].push({ playerId: player.id, roll });
-                console.log(`Host auto-complete roll: ${roll}`);
-            }
         });
     });
 

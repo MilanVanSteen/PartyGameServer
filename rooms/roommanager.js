@@ -81,7 +81,7 @@ function isValidName(roomCode, name) {
 }
 
 function getRoomPlayers(roomCode) {
-  return rooms[roomCode] ? rooms[roomCode].players : [];
+  return rooms[roomCode].filter(p => p.id !== hosts[roomCode]);
 }
 
 module.exports = { createRoom, joinRoom, leaveRoom, setPlayerName, isValidName, getRoomPlayers, rooms };
