@@ -146,14 +146,12 @@ io.on("connection", (socket) => {
     // Powerup logic
     const powerupDone = {};
     // UNITY tells server to start powerup phase
-    socket.on("POWERUP_PHASE_START", ({ playerId, inventory }) => {
+    socket.on("POWERUP_PHASE_START", ({ playerId, inventory, duration }) => {
 
         console.log("Forwarding powerup inventory to", playerId);
 
         // Send inventory to specific website player
-        io.to(playerId).emit("POWERUP_PHASE_START", {
-            inventory
-        });
+        io.to(playerId).emit("POWERUP_PHASE_START", { inventory, duration });
     });
 
     // Website selects powerup
