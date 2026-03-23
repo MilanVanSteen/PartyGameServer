@@ -116,6 +116,7 @@ io.on("connection", (socket) => {
         });
     });
 
+    // Dice roll finishes
     const diceDone = {};
     socket.on("DICE_ROLL_FINISHED", ({ playerId, roll }) => {
         const roomCode = socket.roomCode;
@@ -140,6 +141,54 @@ io.on("connection", (socket) => {
             // Clear for next roll
             diceDone[roomCode] = [];
         }
+    });
+
+    // Powerup logic
+    const powerupDone = {};
+    // UNITY tells server to start powerup phase
+    socket.on("POWERUP_PHASE_START", ({ playerId, inventory }) => {
+
+        console.log("Forwarding powerup inventory to", playerId);
+
+        // Send inventory to specific website player
+        io.to(playerId).emit("POWERUP_PHASE_START", {
+            inventory
+        });
+    });
+
+    // Website selects powerup
+    socket.on("POWERUP_SELECTED", ({ playerId, inventoryIndex }) => {
+
+        console.log("Player selected powerup:", playerId);
+
+        // Forward to Unity host
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        const hostId = hosts[roomCode];
+
+        io.to(hostId).emit("POWERUP_SELECTED", {
+            playerId,
+            inventoryIndex
+        });
+    });
+
+    // Website skips
+    socket.on("POWERUP_SKIPPED", ({ playerId }) => {
+
+        console.log("Player skipped:", playerId);
+
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+    });
+
+    // Powerup phase ends
+    socket.on("POWERUP_PHASE_END", () => {
+
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        io.to(roomCode).emit("POWERUP_PHASE_END");
     });
 
     // Disconnect (Clear rooms)
