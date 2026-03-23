@@ -189,6 +189,12 @@ io.on("connection", (socket) => {
         io.to(roomCode).emit("POWERUP_PHASE_END");
     });
 
+    socket.on("POWERUP_TIMER_FINISHED", ({ playerId }) => {
+        console.log("Backup timer finished from", playerId);
+
+        io.to(hostId).emit("POWERUP_PHASE_FORCE_END");
+    });
+
     // Disconnect (Clear rooms)
     socket.on("disconnecting", () => {
         const roomsJoined = Array.from(socket.rooms).filter(r => r !== socket.id);
