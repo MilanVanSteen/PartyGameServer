@@ -5,6 +5,7 @@ const { createRoom, joinRoom, leaveRoom, setPlayerName, isValidName, getRoomPlay
 
 const hosts = {};
 const diceState = {};
+const extraRollState = {};
 const powerupDone = {};
 
 const app = express();
@@ -194,20 +195,22 @@ io.on("connection", (socket) => {
     socket.on("REQUEST_EXTRA_ROLL", ({ playerId }) => {
         const roomCode = socket.roomCode;
         if (!roomCode) return;
-        if (!hosts[roomCode]) return;
+        
+        const hostId = hosts[roomCode];
+        if (!hostId) return;
 
         console.log(`[EXTRA_ROLL] Requested by ${playerId} in room ${roomCode}`);
 
         // Roll a die
         const roll = Math.floor(Math.random() * 6) + 1;
 
-        // Track state
-        extraRollState[playerId] = { roll, resolved: true };
+        console.log(`[EXTRA_ROLL] Result: ${roll}`);
 
-        // Send result back to Unity host
-        io.to(hosts[roomCode]).emit("EXTRA_ROLL_RESULT", { playerId, roll });
+        // Send to WEBSITE (so dice animates)
+        io.to(playerId).emit("EXTRA_ROLL_RESULT", {playerId, roll});
 
-        console.log(`[EXTRA_ROLL] Result for ${playerId}: ${roll}`);
+        // Send to UNITY HOST (so player moves)
+        io.to(hostId).emit("EXTRA_ROLL_RESULT", {playerId, roll});
     });
 
     // Website skips
