@@ -4,6 +4,8 @@ const { Server } = require("socket.io");
 const { createRoom, joinRoom, leaveRoom, setPlayerName, isValidName, getRoomPlayers, rooms } = require("./rooms/roommanager");
 
 const hosts = {};
+const diceState = {};
+const powerupDone = {};
 
 const app = express();
 const server = http.createServer(app);
@@ -94,23 +96,32 @@ io.on("connection", (socket) => {
     });
 
     // HOST triggers dice roll for a player
-    const diceState = {};
     socket.on("ROLL_DICE", () => {
         const roomCode = socket.roomCode;
-        if (!roomCode || hosts[roomCode] !== socket.id) return;
+        console.log(`[ROLL_DICE] Triggered by ${socket.id} in room ${roomCode}`);
+
+        if (!roomCode) {
+            console.warn("[ROLL_DICE] No roomCode found");
+            return;
+        }
+        if (hosts[roomCode] !== socket.id) {
+            console.warn(`[ROLL_DICE] Socket ${socket.id} is not host for room ${roomCode}`);
+            return;
+        }
 
         const players = getRoomPlayers(roomCode);
-        if (!players || players.length === 0) return;
-
-        console.log("ROLL_DICE received");
-        console.log("Expected players:", players.length);
+        if (!players || players.length === 0) {
+            console.warn(`[ROLL_DICE] No players in room ${roomCode}`);
+            return;
+        }
 
         diceState[roomCode] = { expected: players.length, results: [] };
+        console.log(`[ROLL_DICE] Expected rolls: ${players.length}`, players.map(p => p.id));
 
         // Generate random rolls for each player
         players.forEach(player => {
             const roll = Math.floor(Math.random() * 6) + 1;
-            console.log(`Rolling dice for player ${player.id}: ${roll}`);
+            console.log(`[ROLL_DICE] Rolling for ${player.id}: ${roll}`);
 
             // Send each player only their roll
             io.to(player.id).emit("DICE_ROLL_START", { roll });
@@ -120,26 +131,32 @@ io.on("connection", (socket) => {
     // Dice roll finishes
     socket.on("DICE_ROLL_FINISHED", ({ playerId, roll }) => {
         const roomCode = socket.roomCode;
-        if (!roomCode) 
-        {
-            console.log("No roomCode found for player:", playerId);
+        console.log(`[DICE_ROLL_FINISHED] Received from ${playerId} in room ${roomCode} roll: ${roll}`);
+
+        if (!roomCode) {
+            console.warn(`[DICE_ROLL_FINISHED] No roomCode for ${playerId}`);
             return;
         }
 
         const state = diceState[roomCode];
         if (!state) {
-            console.warn("Dice state not found for room:", roomCode);
+            console.warn(`[DICE_ROLL_FINISHED] Dice state not found for room: ${roomCode}`);
+            console.log(`[DICE_ROLL_FINISHED] Current diceState:`, diceState);
             return;
         }
 
         // Avoid double-counting
-        if (state.results.find(r => r.playerId === playerId)) return;
+        if (state.results.find(r => r.playerId === playerId)) {
+            console.warn(`[DICE_ROLL_FINISHED] Duplicate roll received for ${playerId}, ignoring`);
+            return;
+        }
 
         state.results.push({ playerId, roll });
-        console.log(`Progress: ${state.results.length}/${state.expected}`);
+        console.log(`[DICE_ROLL_FINISHED] Progress for room ${roomCode}: ${state.results.length}/${state.expected}`);
 
         if (state.results.length === state.expected) {
             const hostId = hosts[roomCode];
+            console.log(`[DICE_ROLL_FINISHED] All rolls done for room ${roomCode}, sending to host ${hostId}`, state.results);
             if (hostId) {
                 io.to(hostId).emit("PLAYER_MOVE", { moves: state.results });
             }
@@ -147,8 +164,6 @@ io.on("connection", (socket) => {
         }
     });
 
-    // Powerup logic
-    const powerupDone = {};
     // UNITY tells server to start powerup phase
     socket.on("POWERUP_PHASE_START", ({ playerId, inventory, duration }) => {
 
@@ -217,7 +232,7 @@ io.on("connection", (socket) => {
         // Only handle Unity host leaving
         if (hosts[roomCode] === socket.id) 
         {
-            console.log(`Host disconnected, dispersing room ${roomCode}`);
+            console.log(`[DISCONNECTING] Socket ${socket.id} leaving room ${socket.roomCode}`);
             io.to(roomCode).emit("HOST_DISCONNECTED");
 
             // Optionally clear the room entirely
