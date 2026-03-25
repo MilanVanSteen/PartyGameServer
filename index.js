@@ -183,10 +183,7 @@ io.on("connection", (socket) => {
 
         const hostId = hosts[roomCode];
 
-        io.to(hostId).emit("POWERUP_SELECTED", {
-            playerId,
-            inventoryIndex
-        });
+        io.to(hostId).emit("POWERUP_SELECTED", { playerId, inventoryIndex });
     });
 
     // UNITY asks server to roll extra dice for a player
@@ -207,9 +204,12 @@ io.on("connection", (socket) => {
         console.log(`[EXTRA_ROLL] Result: ${roll}`);
 
         // Send to WEBSITE (so dice animates)
-        io.to(playerId).emit("DICE_ROLL_START", {
-            roll
-        });
+        io.to(playerId).emit("DICE_ROLL_START", { roll });
+    });
+
+    // UNITY tells server shield has expired
+    socket.on("SHIELD_EXPIRED", ({ playerId }) => {
+        io.to(playerId).emit("SHIELD_EXPIRED");
     });
 
     // Website skips
