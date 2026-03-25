@@ -94,17 +94,13 @@ io.on("connection", (socket) => {
     });
 
     // HOST triggers dice roll for a player
+    const diceState = {};
     socket.on("ROLL_DICE", () => {
         const roomCode = socket.roomCode;
-        if (!roomCode) return;
-
-        if (hosts[roomCode] !== socket.id) {
-            socket.emit("ERROR", { message: "Only host can roll dice" });
-            return;
-        }
+        if (!roomCode || hosts[roomCode] !== socket.id) return;
 
         const players = getRoomPlayers(roomCode);
-        console.log("Players in room:", players.map(p => p.id));
+        diceState[roomCode] = { expected: players.length, results: [] };
 
         // Generate random rolls for each player
         players.forEach(player => {
@@ -117,29 +113,23 @@ io.on("connection", (socket) => {
     });
 
     // Dice roll finishes
-    const diceDone = {};
     socket.on("DICE_ROLL_FINISHED", ({ playerId, roll }) => {
-        const roomCode = socket.roomCode;
+        const roomCode = Object.keys(rooms).find(rc => getRoomPlayers(rc).some(p => p.id === playerId));
         console.log("DICE_ROLL_FINISHED received from", playerId, "roll:", roll, "room:", roomCode);
 
-        if (!roomCode) return;
+        if (!roomCode || !diceState[roomCode]) return;
 
-        if (!diceDone[roomCode]) diceDone[roomCode] = [];
-        diceDone[roomCode].push({ playerId, roll });
+        const state = diceState[roomCode];
 
-        const players = getRoomPlayers(roomCode);
-        console.log(`Dice finished so far: ${diceDone[roomCode].length}/${players.length}`);
+        if (state.results.find(r => r.playerId === playerId)) return;
+        state.results.push({ playerId, roll });
 
-        if (diceDone[roomCode].length === players.length) {
-            // All dice finished, send moves to host
-            console.log("All dice finished, sending PLAYER_MOVE to host", hosts[roomCode]);
+        if (state.results.length === state.expected) {
             const hostId = hosts[roomCode];
             if (hostId) {
-                io.to(hostId).emit("PLAYER_MOVE", { moves: diceDone[roomCode] });
+                io.to(hostId).emit("PLAYER_MOVE", { moves: state.results });
             }
-
-            // Clear for next roll
-            diceDone[roomCode] = [];
+            delete diceState[roomCode]; // reset for next roll
         }
     });
 
