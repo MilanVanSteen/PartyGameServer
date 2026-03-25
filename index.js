@@ -190,6 +190,26 @@ io.on("connection", (socket) => {
         });
     });
 
+    // UNITY asks server to roll extra dice for a player
+    socket.on("REQUEST_EXTRA_ROLL", ({ playerId }) => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+        if (!hosts[roomCode]) return;
+
+        console.log(`[EXTRA_ROLL] Requested by ${playerId} in room ${roomCode}`);
+
+        // Roll a die
+        const roll = Math.floor(Math.random() * 6) + 1;
+
+        // Track state
+        extraRollState[playerId] = { roll, resolved: true };
+
+        // Send result back to Unity host
+        io.to(hosts[roomCode]).emit("EXTRA_ROLL_RESULT", { playerId, roll });
+
+        console.log(`[EXTRA_ROLL] Result for ${playerId}: ${roll}`);
+    });
+
     // Website skips
     socket.on("POWERUP_SKIPPED", ({ playerId }) => {
 
