@@ -99,7 +99,10 @@ io.on("connection", (socket) => {
         const roomCode = socket.roomCode;
         if (!roomCode || hosts[roomCode] !== socket.id) return;
 
+        console.log("ROLL_DICE received");
         const players = getRoomPlayers(roomCode);
+        console.log("Expected players:", players.length);
+
         diceState[roomCode] = { expected: players.length, results: [] };
 
         // Generate random rolls for each player
@@ -117,9 +120,14 @@ io.on("connection", (socket) => {
         const roomCode = Object.keys(rooms).find(rc => getRoomPlayers(rc).some(p => p.id === playerId));
         console.log("DICE_ROLL_FINISHED received from", playerId, "roll:", roll, "room:", roomCode);
 
-        if (!roomCode || !diceState[roomCode]) return;
+        if (!roomCode) 
+        {
+            console.log("No roomCode found for player:", playerId);
+            return;
+        }
 
         const state = diceState[roomCode];
+        console.log(`Progress: ${state.results.length}/${state.expected}`);
 
         if (state.results.find(r => r.playerId === playerId)) return;
         state.results.push({ playerId, roll });
