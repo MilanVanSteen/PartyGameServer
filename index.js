@@ -192,24 +192,41 @@ io.on("connection", (socket) => {
     socket.on("POWERUP_TIMER_FINISHED", ({ playerId }) => {
         console.log("Backup timer finished from", playerId);
 
-        io.to(hostId).emit("POWERUP_PHASE_FORCE_END");
+        // Forward to Unity host
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        const hostId = hosts[roomCode];
+
+        if (hostId && io.sockets.sockets.get(hostId)) {
+            io.to(hostId).emit("POWERUP_PHASE_FORCE_END");
+        } else {
+            console.warn("Cannot send POWERUP_PHASE_FORCE_END, host disconnected");
+        }
     });
 
     // Disconnect (Clear rooms)
     socket.on("disconnecting", () => {
-        const roomsJoined = Array.from(socket.rooms).filter(r => r !== socket.id);
-        roomsJoined.forEach(roomCode => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        // Only handle Unity host leaving
+        if (hosts[roomCode] === socket.id) 
+        {
+            console.log(`Host disconnected, dispersing room ${roomCode}`);
+            io.to(roomCode).emit("HOST_DISCONNECTED");
+
+            // Optionally clear the room entirely
+            leaveRoom(roomCode, socket.id);
+            delete hosts[roomCode];
+            delete rooms[roomCode];
+        } 
+        else 
+        {
+            // Normal player leaving
             leaveRoom(roomCode, socket.id);
             io.to(roomCode).emit("PLAYER_LEFT", { playerId: socket.id, players: getRoomPlayers(roomCode) });
-
-            // If host leaves, assign new host
-            if (hosts[roomCode] === socket.id) {
-                const newHost = getRoomPlayers(roomCode)[0]?.id || null;
-                hosts[roomCode] = newHost;
-                if (newHost) io.to(roomCode).emit("NEW_HOST", { host: newHost });
-                console.log(`New host in room ${roomCode}: ${hosts[roomCode]}`);
-            }
-        });
+        }
     });
 });
 
