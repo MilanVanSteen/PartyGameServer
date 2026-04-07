@@ -246,6 +246,55 @@ io.on("connection", (socket) => {
         }
     });
 
+    // UNITY triggers minigame
+    socket.on("MINIGAME_START", ({ minigame, duration }) => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        console.log(`[MINIGAME_START] Host starting minigame ${minigame} in room ${roomCode} for ${duration}s`);
+
+        // Broadcast to all players in room
+        io.to(roomCode).emit("MINIGAME_START", { minigame, duration });
+    });
+
+    // Player finished minigame (correct = true/false)
+    socket.on("MINIGAME_FINISHED", ({ playerId, correct }) => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        console.log(`[MINIGAME_FINISHED] Player ${playerId} finished minigame. Correct: ${correct}`);
+
+        // Forward to Unity host
+        const hostId = hosts[roomCode];
+        if (hostId) {
+            io.to(hostId).emit("PLAYER_FINISHED_MINIGAME", { playerId, correct });
+        }
+    });
+
+    // Timer expires, all players finish minigame (correct = true/false)
+    socket.on("MINIGAME_FORCE_FINISH", ({ playerId, correct = false }) => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        console.log(`[MINIGAME_FORCE_FINISH] Timer expired for ${playerId}, marking as ${correct ? 'correct' : 'failed'}`);
+
+        const hostId = hosts[roomCode];
+        if (hostId) {
+            io.to(hostId).emit("PLAYER_FINISHED_MINIGAME", { playerId, correct });
+        }
+    });
+
+    // UNITY notifies that the minigame ended (timer ran out)
+    socket.on("MINIGAME_END", () => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        console.log(`[MINIGAME_END] Host ended minigame for room ${roomCode}`);
+
+        // Notify all players in room that minigame is over
+        io.to(roomCode).emit("MINIGAME_ENDED");
+    });
+
     // Disconnect (Clear rooms)
     socket.on("disconnecting", () => {
         const roomCode = socket.roomCode;
