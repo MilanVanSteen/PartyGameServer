@@ -214,11 +214,16 @@ io.on("connection", (socket) => {
 
     // Website skips
     socket.on("POWERUP_SKIPPED", ({ playerId }) => {
-
-        console.log("Player skipped:", playerId);
-
         const roomCode = socket.roomCode;
         if (!roomCode) return;
+
+        console.log(`[POWERUP_SKIPPED] Player ${playerId} skipped powerup.`);
+
+        // Forward to Unity host
+        const hostId = hosts[roomCode];
+        if (hostId) {
+            io.to(hostId).emit("POWERUP_SKIPPED", { playerId });
+        }
     });
 
     // Powerup phase ends
