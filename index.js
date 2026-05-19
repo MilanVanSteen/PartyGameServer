@@ -5,6 +5,7 @@ const { createRoom, joinRoom, leaveRoom, setPlayerName, isValidName, getRoomPlay
 
 const hosts = {};
 const diceState = {};
+const minigameState = {};
 
 const app = express();
 const server = http.createServer(app);
@@ -256,49 +257,61 @@ io.on("connection", (socket) => {
         const roomCode = socket.roomCode;
         if (!roomCode) return;
 
+        minigameState[roomCode] = {
+            type: minigame,
+            scores: {},
+            startTime: Date.now(),
+            duration
+        };
+
         console.log(`[MINIGAME_START] Host starting minigame ${minigame} in room ${roomCode} for ${duration}s`);
 
         // Broadcast to all players in room
         io.to(roomCode).emit("MINIGAME_START", { minigame, duration });
+
+        setTimeout(() => {
+            finishMinigame(roomCode);
+        }, duration * 1000);
     });
 
-    // Player finished minigame (correct = true/false)
-    socket.on("MINIGAME_FINISHED", ({ playerId, correct }) => {
+    socket.on("MINIGAME_ANSWER", ({ playerId, correct }) => {
         const roomCode = socket.roomCode;
         if (!roomCode) return;
 
-        console.log(`[MINIGAME_FINISHED] Player ${playerId} finished minigame. Correct: ${correct}`);
+        const state = minigameState[roomCode];
+        if (!state) return;
 
-        // Forward to Unity host
-        const hostId = hosts[roomCode];
-        if (hostId) {
-            io.to(hostId).emit("PLAYER_FINISHED_MINIGAME", { playerId, correct });
+        if (!state.scores[playerId]) {
+            state.scores[playerId] = 0;
         }
-    });
 
-    // Timer expires, all players finish minigame (correct = true/false)
-    socket.on("MINIGAME_FORCE_FINISH", ({ playerId, correct = false }) => {
-        const roomCode = socket.roomCode;
-        if (!roomCode) return;
-
-        console.log(`[MINIGAME_FORCE_FINISH] Timer expired for ${playerId}, marking as ${correct ? 'correct' : 'failed'}`);
-
-        const hostId = hosts[roomCode];
-        if (hostId) {
-            io.to(hostId).emit("PLAYER_FINISHED_MINIGAME", { playerId, correct });
+        if (correct) {
+            state.scores[playerId]++;
         }
+
+        console.log(`[WORDRUSH] ${playerId} score:`, state.scores[playerId]);
     });
 
-    // UNITY notifies that the minigame ended (timer ran out)
-    socket.on("MINIGAME_END", () => {
-        const roomCode = socket.roomCode;
-        if (!roomCode) return;
+    function finishMinigame(roomCode) {
+        const state = minigameState[roomCode];
+        if (!state) return;
 
-        console.log(`[MINIGAME_END] Host ended minigame for room ${roomCode}`);
+        const scores = state.scores;
 
-        // Notify all players in room that minigame is over
+        const values = Object.values(scores);
+
+        if (values.length === 0) return;
+        const maxScore = Math.max(...values);
+        
+        const winners = Object.entries(scores)
+            .filter(([_, score]) => score === maxScore)
+            .map(([playerId]) => playerId);
+
+        io.to(roomCode).emit("MINIGAME_RESULTS", { winners, scores });
         io.to(roomCode).emit("MINIGAME_ENDED");
-    });
+
+        delete minigameState[roomCode];
+    }
 
     // Disconnect (Clear rooms)
     socket.on("disconnecting", () => {
