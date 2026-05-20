@@ -288,8 +288,11 @@ io.on("connection", (socket) => {
         if (correct) {
             state.scores[playerId]++;
         }
+        else if(!correct) {
+            state.scores[playerId] = Math.max(0, state.scores[playerId] - 1);
+        }
 
-        console.log(`[WORDRUSH] ${playerId} score:`, state.scores[playerId]);
+        console.log(`${playerId} score:`, state.scores[playerId]);
     });
 
     function finishMinigame(roomCode) {
