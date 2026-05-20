@@ -269,9 +269,11 @@ io.on("connection", (socket) => {
         // Broadcast to all players in room
         io.to(roomCode).emit("MINIGAME_START", { minigame, duration });
 
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
             finishMinigame(roomCode);
         }, duration * 1000);
+
+        minigameState[roomCode].timeoutId = timeoutId;
     });
 
     socket.on("MINIGAME_ANSWER", ({ playerId, correct }) => {
@@ -300,21 +302,40 @@ io.on("connection", (socket) => {
         if (!state) return;
 
         const scores = state.scores;
-
         const values = Object.values(scores);
 
-        if (values.length === 0) return;
-        const maxScore = Math.max(...values);
-        
-        const winners = Object.entries(scores)
-            .filter(([_, score]) => score === maxScore)
-            .map(([playerId]) => playerId);
+        let winners = [];
+
+        if (values.length > 0) {
+            const maxScore = Math.max(...values);
+
+            winners = Object.entries(scores)
+                .filter(([_, score]) => score === maxScore)
+                .map(([playerId]) => playerId);
+        }
 
         io.to(roomCode).emit("MINIGAME_RESULTS", { winners, scores });
         io.to(roomCode).emit("MINIGAME_ENDED");
 
         delete minigameState[roomCode];
     }
+
+    socket.on("MINIGAME_PHASE_END", () => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        console.log(`[MINIGAME_PHASE_END] Closing minigame in room ${roomCode}`);
+
+        const state = minigameState[roomCode];
+        if (!state) return;
+
+        // Cancel automatic timeout if it hasn't fired yet
+        if (state.timeoutId) {
+            clearTimeout(state.timeoutId);
+        }
+
+        finishMinigame(roomCode);
+    });
 
     // Disconnect (Clear rooms)
     socket.on("disconnecting", () => {
