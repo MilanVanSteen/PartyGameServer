@@ -229,9 +229,13 @@ io.on("connection", (socket) => {
 
     // Powerup phase ends
     socket.on("POWERUP_PHASE_END", () => {
-
         const roomCode = socket.roomCode;
         if (!roomCode) return;
+
+        if (hosts[roomCode] !== socket.id) {
+            console.warn("Non-host attempted to end powerup phase");
+            return;
+        }
 
         io.to(roomCode).emit("POWERUP_PHASE_END");
     });
@@ -268,12 +272,6 @@ io.on("connection", (socket) => {
 
         // Broadcast to all players in room
         io.to(roomCode).emit("MINIGAME_START", { minigame, duration });
-
-        const timeoutId = setTimeout(() => {
-            finishMinigame(roomCode);
-        }, duration * 1000);
-
-        minigameState[roomCode].timeoutId = timeoutId;
     });
 
     socket.on("MINIGAME_ANSWER", ({ playerId, correct }) => {
@@ -314,6 +312,7 @@ io.on("connection", (socket) => {
                 .map(([playerId]) => playerId);
         }
 
+        console.log(`[MINIGAME_RESULTS] Winners for room ${roomCode}:`, winners, "Scores:", scores);
         io.to(roomCode).emit("MINIGAME_RESULTS", { winners, scores });
         io.to(roomCode).emit("MINIGAME_ENDED");
 
@@ -324,17 +323,33 @@ io.on("connection", (socket) => {
         const roomCode = socket.roomCode;
         if (!roomCode) return;
 
-        console.log(`[MINIGAME_PHASE_END] Closing minigame in room ${roomCode}`);
-
-        const state = minigameState[roomCode];
-        if (!state) return;
-
-        // Cancel automatic timeout if it hasn't fired yet
-        if (state.timeoutId) {
-            clearTimeout(state.timeoutId);
+        if (hosts[roomCode] !== socket.id) {
+            console.warn("Non-host attempted to end minigame");
+            return;
         }
 
+        console.log(`[MINIGAME_PHASE_END] Closing minigame in room ${roomCode}`);
+
         finishMinigame(roomCode);
+    });
+
+    socket.on("MINIGAME_TIMER_FINISHED", ({ playerId }) => {
+
+        console.log("Minigame timer finished from", playerId);
+
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        const hostId = hosts[roomCode];
+
+        if (hostId && io.sockets.sockets.get(hostId)) {
+
+            io.to(hostId).emit("MINIGAME_PHASE_FORCE_END");
+
+        } else {
+
+            console.warn("Cannot send MINIGAME_PHASE_FORCE_END, host disconnected");
+        }
     });
 
     // Disconnect (Clear rooms)
