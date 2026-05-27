@@ -352,6 +352,32 @@ io.on("connection", (socket) => {
         }
     });
 
+    // HOST starts game
+    socket.on("END_GAME", ({ playerName }) => {
+        console.log("END_GAME received from:", socket.id);
+
+        const roomCode = socket.roomCode;
+
+        if (!roomCode) 
+        {
+            socket.emit("ERROR", { message: "Not in a room" });
+            return;
+        }
+        
+        if (hosts[roomCode] !== socket.id) 
+        {
+            socket.emit("ERROR", { message: "Only the host can end the game" });
+            return;
+        }
+        
+        console.log(`Game ended in room ${roomCode} by host ${socket.id}`);
+        console.log(`Winner: ${playerName}`);
+
+        io.to(roomCode).emit("GAME_ENDED", {
+            winnerName: playerName
+        });
+    });
+
     // Disconnect (Clear rooms)
     socket.on("disconnecting", () => {
         const roomCode = socket.roomCode;
