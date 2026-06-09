@@ -378,6 +378,21 @@ io.on("connection", (socket) => {
         });
     });
 
+    socket.on("LEAVE_ROOM", () => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        leaveRoom(roomCode, socket.id);
+        socket.leave(roomCode);
+
+        io.to(roomCode).emit("PLAYER_LEFT", {
+            playerId: socket.id,
+            players: getRoomPlayers(roomCode)
+        });
+
+        io.to(roomCode).emit("ROOM_RESET");
+    });
+
     // Disconnect (Clear rooms)
     socket.on("disconnecting", () => {
         const roomCode = socket.roomCode;
