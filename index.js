@@ -378,43 +378,46 @@ io.on("connection", (socket) => {
         });
     });
 
-    socket.on("LEAVE_ROOM", () => {
+    socket.on("HOST_STOP_GAME", () => {
         const roomCode = socket.roomCode;
         if (!roomCode) return;
 
+        // only allow host
+        if (hosts[roomCode] !== socket.id) return;
+
+        io.to(roomCode).emit("GAME_STOPPED");
+
+        // full cleanup
         leaveRoom(roomCode, socket.id);
-        socket.leave(roomCode);
-
-        io.to(roomCode).emit("PLAYER_LEFT", {
-            playerId: socket.id,
-            players: getRoomPlayers(roomCode)
-        });
-
-        io.to(roomCode).emit("ROOM_RESET");
+        delete hosts[roomCode];
+        delete rooms[roomCode];
     });
 
-    // Disconnect (Clear rooms)
-    socket.on("disconnecting", () => {
+    // Disconnect
+    socket.on("disconnect", () => {
         const roomCode = socket.roomCode;
         if (!roomCode) return;
 
-        // Only handle Unity host leaving
-        if (hosts[roomCode] === socket.id) 
-        {
-            console.log(`[DISCONNECTING] Socket ${socket.id} leaving room ${socket.roomCode}`);
+        const isHost = hosts[roomCode] === socket.id;
+
+        if (isHost) {
             io.to(roomCode).emit("HOST_DISCONNECTED");
 
-            // Optionally clear the room entirely
             leaveRoom(roomCode, socket.id);
             delete hosts[roomCode];
             delete rooms[roomCode];
-        } 
-        else 
-        {
-            // Normal player leaving
-            leaveRoom(roomCode, socket.id);
-            io.to(roomCode).emit("PLAYER_LEFT", { playerId: socket.id, players: getRoomPlayers(roomCode) });
+            return;
         }
+
+        // PLAYER LEFT
+        leaveRoom(roomCode, socket.id);
+
+        const updatedPlayers = getRoomPlayers(roomCode);
+
+        io.to(roomCode).emit("PLAYER_LEFT", {
+            playerId: socket.id,
+            players: updatedPlayers
+        });
     });
 });
 
