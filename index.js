@@ -21,8 +21,10 @@ io.on("connection", (socket) => {
 
     // CREATE_ROOM
     socket.on("CREATE_ROOM", () => {
-        if (socket.roomCode && rooms[socket.roomCode]) {
-            socket.emit("ROOM_CREATED", { roomCode: socket.roomCode });
+        const existingRoom = socket.roomCode;
+
+        if (socket.roomCode && rooms[existingRoom]) {
+            socket.emit("ROOM_CREATED", { roomCode: existingRoom });
             return;
         }
 
@@ -392,11 +394,12 @@ io.on("connection", (socket) => {
         if (hosts[roomCode] !== socket.id) return;
 
         console.log(`Host stopped game in room ${roomCode} by host ${socket.id}`);
+
         io.to(roomCode).emit("GAME_STOPPED");
 
         // full cleanup
-        console.logWarning(`Room ${roomCode} cleared by host ${socket.id}`);
         leaveRoom(roomCode, socket.id);
+
         delete hosts[roomCode];
         delete rooms[roomCode];
     });
@@ -409,16 +412,18 @@ io.on("connection", (socket) => {
         const isHost = hosts[roomCode] === socket.id;
 
         if (isHost) {
+            console.log(`HOST disconnected in room ${roomCode}`);
+            
             io.to(roomCode).emit("HOST_DISCONNECTED");
 
             leaveRoom(roomCode, socket.id);
-            delete hosts[roomCode];
             delete rooms[roomCode];
             return;
         }
 
         // PLAYER LEFT
-        console.logWarning(`Player ${socket.id} left room ${roomCode}`);
+        console.log(`Player ${socket.id} left room ${roomCode}`);
+
         leaveRoom(roomCode, socket.id);
 
         const updatedPlayers = getRoomPlayers(roomCode);
@@ -427,6 +432,11 @@ io.on("connection", (socket) => {
             playerId: socket.id,
             players: updatedPlayers
         });
+
+        if (updatedPlayers.length === 0) {
+            console.log(`Room ${roomCode} empty → deleting`);
+            delete rooms[roomCode];
+        }
     });
 });
 
