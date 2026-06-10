@@ -172,9 +172,15 @@ io.on("connection", (socket) => {
         }
     });
 
+    // UNITY tells server to show player stuck
+    socket.on("SHOW_PLAYER_STUCK", ({ playerId, isStuck }) => {
+        console.log("Showing player stuck status to", playerId);
+
+        io.to(playerId).emit("SHOW_PLAYER_STUCK", { isStuck });
+    });
+
     // UNITY tells server to start powerup phase
     socket.on("POWERUP_PHASE_START", ({ playerId, inventory, duration }) => {
-
         console.log("Forwarding powerup inventory to", playerId);
 
         // Send inventory to specific website player
