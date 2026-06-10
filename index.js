@@ -21,20 +21,17 @@ io.on("connection", (socket) => {
 
     // CREATE_ROOM
     socket.on("CREATE_ROOM", () => {
-        const existing = Object.entries(hosts)
-            .find(([room, hostId]) => hostId === socket.id);
-
-        if (existing) {
-            socket.emit("ROOM_CREATED", { roomCode: existing[0] });
+        if (socket.roomCode && rooms[socket.roomCode]) {
+            socket.emit("ROOM_CREATED", { roomCode: socket.roomCode });
             return;
         }
-        
+
         const roomCode = createRoom(socket.id);
         socket.join(roomCode);
 
         hosts[roomCode] = socket.id;
         socket.roomCode = roomCode;
-        
+
         socket.emit("ROOM_CREATED", { roomCode });
         console.log(`Room ${roomCode} created by ${socket.id}`);
     });
