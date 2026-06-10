@@ -129,8 +129,10 @@ io.on("connection", (socket) => {
     });
 
     // Dice roll finishes
-    socket.on("DICE_ROLL_FINISHED", ({ playerId, roll }) => {
+    socket.on("DICE_ROLL_FINISHED", ({ roll }) => {
         const roomCode = socket.roomCode;
+        const playerId = socket.id;
+
         console.log(`[DICE_ROLL_FINISHED] Received from ${playerId} in room ${roomCode} roll: ${roll}`);
 
         if (!roomCode) {
@@ -141,7 +143,6 @@ io.on("connection", (socket) => {
         const state = diceState[roomCode];
         if (!state) {
             console.warn(`[DICE_ROLL_FINISHED] Dice state not found for room: ${roomCode}`);
-            console.log(`[DICE_ROLL_FINISHED] Current diceState:`, diceState);
             return;
         }
 
@@ -152,6 +153,7 @@ io.on("connection", (socket) => {
         }
 
         state.results.push({ playerId, roll });
+
         console.log(`[DICE_ROLL_FINISHED] Progress for room ${roomCode}: ${state.results.length}/${state.expected}`);
 
         if (state.results.length === state.expected) {
@@ -385,9 +387,11 @@ io.on("connection", (socket) => {
         // only allow host
         if (hosts[roomCode] !== socket.id) return;
 
+        console.log(`Host stopped game in room ${roomCode} by host ${socket.id}`);
         io.to(roomCode).emit("GAME_STOPPED");
 
         // full cleanup
+        console.logWarning(`Room ${roomCode} cleared by host ${socket.id}`);
         leaveRoom(roomCode, socket.id);
         delete hosts[roomCode];
         delete rooms[roomCode];
@@ -410,6 +414,7 @@ io.on("connection", (socket) => {
         }
 
         // PLAYER LEFT
+        console.logWarning(`Player ${socket.id} left room ${roomCode}`);
         leaveRoom(roomCode, socket.id);
 
         const updatedPlayers = getRoomPlayers(roomCode);
