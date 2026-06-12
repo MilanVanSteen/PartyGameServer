@@ -73,7 +73,7 @@ io.on("connection", (socket) => {
 
         setPlayerName(roomCode, socket.id, playerName.trim());
         
-        io.to(roomCode).emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
+        socket.emit("PLAYER_JOINED", {players: getRoomPlayers(roomCode)});
     });
 
     // HOST starts game
