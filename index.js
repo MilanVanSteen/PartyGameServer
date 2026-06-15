@@ -276,6 +276,13 @@ io.on("connection", (socket) => {
         const roomCode = socket.roomCode;
         if (!roomCode) return;
 
+        const players = getRoomPlayers(roomCode);
+
+        const scores = {};
+        players.forEach(p => {
+            scores[p.id] = 0;
+        });
+
         minigameState[roomCode] = {
             type: minigame,
             scores: {},
@@ -283,7 +290,7 @@ io.on("connection", (socket) => {
             duration
         };
 
-        console.log(`[MINIGAME_START] Host starting minigame ${minigame} in room ${roomCode} for ${duration}s`);
+        console.log(`[MINIGAME_START] ${minigame} in room ${roomCode} for ${duration}s`);
 
         // Broadcast to all players in room
         io.to(roomCode).emit("MINIGAME_START", { minigame, duration });
