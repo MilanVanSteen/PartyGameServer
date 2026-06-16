@@ -278,7 +278,7 @@ io.on("connection", (socket) => {
 
         const players = getRoomPlayers(roomCode);
 
-        minigameState[roomCode] = {
+        const state = {
             type: minigame,
             scores: {},
             startTime: Date.now(),
