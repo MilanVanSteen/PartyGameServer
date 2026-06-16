@@ -285,10 +285,6 @@ io.on("connection", (socket) => {
             duration
         };
 
-        players.forEach(p => {
-            state.scores[p.id] = 0;
-        });
-
         minigameState[roomCode] = state;
 
         console.log(`[MINIGAME_START] ${minigame} in room ${roomCode} for ${duration}s`);
